@@ -1,0 +1,17 @@
+{
+    "name": "tate/backend",
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tate\\Backend\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Santiago Zaffora",
+            "email": "santiagozaffora@celpigue.com.ar"
+        }
+    ]
+}
