@@ -79,30 +79,84 @@ $accion = $_REQUEST['accion'] ?? null;
 
 try {
     switch ($accion) {
+        // --- OBTENER UN CELULAR ---
+        case 'obtener':
+            if (!isset($_GET['id'])) {
+                $response = ['status' => 'error', 'message' => 'Falta el parámetro id.'];
+                $statusCode = 400; // Bad Request
+                break;
+            }
+        
+            $id = intval($_GET['id']); // Sanitizar
+        
+            $sql = "SELECT * FROM smartphones WHERE id = $id LIMIT 1";
+            $result = mysqli_query($conn, $sql);
+        
+            if ($result && mysqli_num_rows($result) > 0) {
+                $smartphone = mysqli_fetch_assoc($result);
+                $response = ['status' => 'success', 'message' => 'Celular encontrado.', 'data' => $smartphone];
+                $statusCode = 200; // OK
+            } else {
+                $response = ['status' => 'error', 'message' => 'Celular no encontrado.'];
+                $statusCode = 404; // Not Found
+            }
+        
+            mysqli_free_result($result);
+            break;
+
         // --- LISTAR CELULARES ---
         case 'listar':
             $allowedSortColumns = ['id', 'brand', 'model'];
             $sortColumn = 'id';
             $sortDir = 'ASC';
-
+        
+            // Ordenamiento si está presente
             if (isset($_GET['sort']) && in_array($_GET['sort'], $allowedSortColumns)) {
                 $sortColumn = $_GET['sort'];
             }
             if (isset($_GET['dir']) && in_array(strtoupper($_GET['dir']), ['ASC', 'DESC'])) {
                 $sortDir = strtoupper($_GET['dir']);
             }
-
-            $sqlSelect = "SELECT * FROM smartphones ORDER BY " . $sortColumn . " " . $sortDir;
-            $result = mysqli_query($conn, $sqlSelect);
+        
+            // Filtros si están presentes
+            $filters = [];
+            $params = [];
+        
+            if (!empty($_GET['brand'])) {
+                $filters[] = "brand LIKE ?";
+                $params[] = "%" . $_GET['brand'] . "%";
+            }
+            if (!empty($_GET['model'])) {
+                $filters[] = "model LIKE ?";
+                $params[] = "%" . $_GET['model'] . "%";
+            }
+        
+            $whereClause = count($filters) > 0 ? "WHERE " . implode(" AND ", $filters) : "";
+        
+            // Preparar SQL
+            $sqlSelect = "SELECT * FROM smartphones $whereClause ORDER BY $sortColumn $sortDir";
+        
+            // Preparar y ejecutar consulta
+            $stmt = mysqli_prepare($conn, $sqlSelect);
+            if (count($params) > 0) {
+                // Tipos de datos (todos string: 's')
+                $types = str_repeat('s', count($params));
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+            }
+        
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+        
             $smartphones = [];
             while ($row = mysqli_fetch_assoc($result)) {
                 $smartphones[] = $row;
             }
             mysqli_free_result($result);
-
+            mysqli_stmt_close($stmt);
+        
             $response = ['status' => 'success', 'message' => 'Celulares listados correctamente.'];
             $data = $smartphones;
-            $statusCode = 200; // OK
+            $statusCode = 200;
             break;
 
         // --- CREAR CELULAR ---
