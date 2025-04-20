@@ -106,22 +106,26 @@ try {
 
         // --- LISTAR CELULARES ---
         case 'listar':
-            $allowedSortColumns = ['id', 'brand', 'model'];
+            // Aceptar ordenamiento por todas las columnas válidas
+            $allowedSortColumns = ['id', 'brand', 'model', 'screen', 'processor', 'ram', 'rom', 'frontcamera', 'rearcamera', 'battery'];
             $sortColumn = 'id';
             $sortDir = 'ASC';
-        
+
             // Ordenamiento si está presente
             if (isset($_GET['sort']) && in_array($_GET['sort'], $allowedSortColumns)) {
                 $sortColumn = $_GET['sort'];
             }
-            if (isset($_GET['dir']) && in_array(strtoupper($_GET['dir']), ['ASC', 'DESC'])) {
-                $sortDir = strtoupper($_GET['dir']);
+
+            // Aceptar tanto "dir" como "order" como parámetro de dirección de orden
+            $dirParam = $_GET['dir'] ?? $_GET['order'] ?? 'ASC';
+            if (in_array(strtoupper($dirParam), ['ASC', 'DESC'])) {
+                $sortDir = strtoupper($dirParam);
             }
-        
+
             // Filtros si están presentes
             $filters = [];
             $params = [];
-        
+
             if (!empty($_GET['brand'])) {
                 $filters[] = "brand LIKE ?";
                 $params[] = "%" . $_GET['brand'] . "%";
@@ -130,12 +134,12 @@ try {
                 $filters[] = "model LIKE ?";
                 $params[] = "%" . $_GET['model'] . "%";
             }
-        
+
             $whereClause = count($filters) > 0 ? "WHERE " . implode(" AND ", $filters) : "";
-        
+
             // Preparar SQL
             $sqlSelect = "SELECT * FROM smartphones $whereClause ORDER BY $sortColumn $sortDir";
-        
+
             // Preparar y ejecutar consulta
             $stmt = mysqli_prepare($conn, $sqlSelect);
             if (count($params) > 0) {
@@ -143,17 +147,17 @@ try {
                 $types = str_repeat('s', count($params));
                 mysqli_stmt_bind_param($stmt, $types, ...$params);
             }
-        
+
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
-        
+
             $smartphones = [];
             while ($row = mysqli_fetch_assoc($result)) {
                 $smartphones[] = $row;
             }
             mysqli_free_result($result);
             mysqli_stmt_close($stmt);
-        
+
             $response = ['status' => 'success', 'message' => 'Celulares listados correctamente.'];
             $data = $smartphones;
             $statusCode = 200;
